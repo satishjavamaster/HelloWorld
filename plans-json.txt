@@ -1,0 +1,54 @@
+[
+  {
+    "id": "plan_a",
+    "name": "Plan A",
+    "version": "1.0",
+    "status": "active",
+    "url": "/api/plan-a/run",
+    "description": "Basic plan"
+  }
+]
+
+import json
+
+with open("plans.json") as f:
+    PLANS = json.load(f)
+	
+	import json
+
+def load_plans():
+    with open("/app/config/plans.json") as f:
+        return json.load(f)
+
+@app.get("/plans")
+def get_plans():
+    return load_plans()
+	
+	
+	import json
+
+def load_plans():
+    with open("/app/config/plans.json") as f:
+        return json.load(f)
+
+@app.get("/plans")
+def get_plans():
+    return load_plans()
+	
+	
+	import os
+import json
+
+CONFIG_PATH = os.getenv("PLANS_FILE", "/app/config/plans.json")
+
+def load_plans():
+    with open(CONFIG_PATH) as f:
+        return json.load(f)
+		
+		
+		from functools import lru_cache
+
+@lru_cache()
+def load_plans():
+    with open("/app/config/plans.json") as f:
+        return json.load(f)
