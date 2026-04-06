@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Test - Planner</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #1e1e2e; color: #cdd6f4; padding: 24px; }
+    h1 { margin-bottom: 16px; color: #89b4fa; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .status { padding: 10px 16px; border-radius: 8px; margin-bottom: 16px; font-weight: 600; }
+    .status.connected { background: #1e4620; color: #a6e3a1; }
+    .status.disconnected { background: #4e2020; color: #f38ba8; }
+    .status.connecting { background: #4e4020; color: #f9e2af; }
+    .controls { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    button { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-connect { background: #a6e3a1; color: #1e1e2e; }
+    .btn-disconnect { background: #f38ba8; color: #1e1e2e; }
+    .btn-ping { background: #89b4fa; color: #1e1e2e; }
+    .btn-clear { background: #6c7086; color: #cdd6f4; }
+    input { padding: 8px 12px; border: 1px solid #45475a; border-radius: 6px; background: #313244; color: #cdd6f4; font-size: 14px; width: 320px; }
+    .log { background: #181825; border: 1px solid #45475a; border-radius: 8px; padding: 16px; max-height: 500px; overflow-y: auto; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; }
+    .log-entry { border-bottom: 1px solid #31324444; padding: 4px 0; }
+    .log-entry:last-child { border-bottom: none; }
+    .log-entry .time { color: #6c7086; margin-right: 8px; }
+    .log-entry.sent { color: #a6e3a1; }
+    .log-entry.received { color: #89b4fa; }
+    .log-entry.error { color: #f38ba8; }
+    .log-entry.info { color: #f9e2af; }
+    .send-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .send-row input { flex: 1; }
+    label { font-size: 13px; color: #a6adc8; margin-bottom: 4px; display: block; }
+    .section { margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>WebSocket Test</h1>
+
+    <div class="section">
+      <label>WebSocket URL</label>
+      <input type="text" id="wsUrl" value="ws://localhost:8000/api/planner/ws" />
+    </div>
+
+    <div id="statusBar" class="status disconnected">Disconnected</div>
+
+    <div class="controls">
+      <button class="btn-connect" id="btnConnect" onclick="connect()">Connect</button>
+      <button class="btn-disconnect" id="btnDisconnect" onclick="disconnect()" disabled>Disconnect</button>
+      <button class="btn-ping" id="btnPing" onclick="sendPing()" disabled>Send Ping</button>
+      <button class="btn-clear" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="section">
+      <label>Send custom message</label>
+      <div class="send-row">
+        <input type="text" id="msgInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter') sendMsg()" />
+        <button class="btn-ping" id="btnSend" onclick="sendMsg()" disabled>Send</button>
+      </div>
+    </div>
+
+    <label>Event Log</label>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    let ws = null;
+
+    function timestamp() {
+      return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+    }
+
+    function log(msg, cls = 'info') {
+      const el = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry ' + cls;
+      entry.innerHTML = '<span class="time">' + timestamp() + '</span>' + escapeHtml(msg);
+      el.appendChild(entry);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function setStatus(text, cls) {
+      const bar = document.getElementById('statusBar');
+      bar.textContent = text;
+      bar.className = 'status ' + cls;
+    }
+
+    function setButtons(connected) {
+      document.getElementById('btnConnect').disabled = connected;
+      document.getElementById('btnDisconnect').disabled = !connected;
+      document.getElementById('btnPing').disabled = !connected;
+      document.getElementById('btnSend').disabled = !connected;
+    }
+
+    function connect() {
+      const url = document.getElementById('wsUrl').value.trim();
+      if (!url) return;
+      setStatus('Connecting...', 'connecting');
+      log('Connecting to ' + url + ' ...');
+
+      try {
+        ws = new WebSocket(url);
+      } catch (e) {
+        log('Failed to create WebSocket: ' + e.message, 'error');
+        setStatus('Disconnected', 'disconnected');
+        return;
+      }
+
+      ws.onopen = () => {
+        setStatus('Connected', 'connected');
+        setButtons(true);
+        log('Connection established');
+      };
+
+      ws.onmessage = (event) => {
+        let display = event.data;
+        try {
+          const obj = JSON.parse(event.data);
+          display = JSON.stringify(obj, null, 2);
+        } catch (_) {}
+        log('Received: ' + display, 'received');
+      };
+
+      ws.onerror = (event) => {
+        log('WebSocket error', 'error');
+      };
+
+      ws.onclose = (event) => {
+        setStatus('Disconnected', 'disconnected');
+        setButtons(false);
+        log('Connection closed (code: ' + event.code + ', reason: ' + (event.reason || 'none') + ')', 'info');
+        ws = null;
+      };
+    }
+
+    function disconnect() {
+      if (ws) {
+        ws.close();
+        log('Disconnecting...');
+      }
+    }
+
+    function sendPing() {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send('ping');
+        log('Sent: ping', 'sent');
+      }
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('msgInput');
+      const msg = input.value.trim();
+      if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(msg);
+      log('Sent: ' + msg, 'sent');
+      input.value = '';
+    }
+
+    function clearLog() {
+      document.getElementById('log').innerHTML = '';
+    }
+  </script>
+</body>
+</html>
