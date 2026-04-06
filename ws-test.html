@@ -43,6 +43,15 @@
       <input type="text" id="wsUrl" value="ws://localhost:8000/api/planner/ws" />
     </div>
 
+    <div class="section">
+      <label>Bearer Token (from Swagger "Authorize")</label>
+      <div class="send-row">
+        <input type="password" id="tokenInput" placeholder="Paste your OAuth2 access token..." />
+        <button class="btn-clear" onclick="toggleTokenVisibility()" id="btnToggleToken">Show</button>
+      </div>
+      <label style="margin-top:4px; font-size:11px; color:#6c7086;">Token is sent as <code>?token=...</code> query param. Your backend must read it from there.</label>
+    </div>
+
     <div id="statusBar" class="status disconnected">Disconnected</div>
 
     <div class="controls">
@@ -99,11 +108,26 @@
       document.getElementById('btnSend').disabled = !connected;
     }
 
+    function toggleTokenVisibility() {
+      const input = document.getElementById('tokenInput');
+      const btn = document.getElementById('btnToggleToken');
+      if (input.type === 'password') { input.type = 'text'; btn.textContent = 'Hide'; }
+      else { input.type = 'password'; btn.textContent = 'Show'; }
+    }
+
     function connect() {
-      const url = document.getElementById('wsUrl').value.trim();
+      let url = document.getElementById('wsUrl').value.trim();
       if (!url) return;
+
+      const token = document.getElementById('tokenInput').value.trim();
+      if (token) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = url + separator + 'token=' + encodeURIComponent(token);
+      }
+
       setStatus('Connecting...', 'connecting');
-      log('Connecting to ' + url + ' ...');
+      const logUrl = token ? url.replace(token, '***') : url;
+      log('Connecting to ' + logUrl + ' ...');
 
       try {
         ws = new WebSocket(url);
