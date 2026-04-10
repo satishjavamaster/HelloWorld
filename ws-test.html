@@ -147,9 +147,17 @@
         let display = event.data;
         try {
           const obj = JSON.parse(event.data);
-          display = JSON.stringify(obj, null, 2);
-        } catch (_) {}
-        log('Received: ' + display, 'received');
+          if (obj.type && obj.payload !== undefined) {
+            log('[' + obj.type + '] ' + obj.message, 'received');
+            display = JSON.stringify(obj.payload, null, 2);
+            log('Payload: ' + display, 'received');
+          } else {
+            display = JSON.stringify(obj, null, 2);
+            log('Received: ' + display, 'received');
+          }
+        } catch (_) {
+          log('Received: ' + display, 'received');
+        }
       };
 
       ws.onerror = (event) => {
