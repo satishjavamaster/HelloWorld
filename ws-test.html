@@ -21,7 +21,7 @@
     .btn-clear { background: #6c7086; color: #cdd6f4; }
     input { padding: 8px 12px; border: 1px solid #45475a; border-radius: 6px; background: #313244; color: #cdd6f4; font-size: 14px; width: 320px; }
     .log { background: #181825; border: 1px solid #45475a; border-radius: 8px; padding: 16px; max-height: 500px; overflow-y: auto; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 13px; line-height: 1.6; }
-    .log-entry { border-bottom: 1px solid #31324444; padding: 4px 0; }
+    .log-entry { border-bottom: 1px solid #31324444; padding: 4px 0; white-space: pre-wrap; word-break: break-word; }
     .log-entry:last-child { border-bottom: none; }
     .log-entry .time { color: #6c7086; margin-right: 8px; }
     .log-entry.sent { color: #a6e3a1; }
@@ -145,6 +145,7 @@
 
       ws.onmessage = (event) => {
         let display = event.data;
+        console.log('WS raw message:', event.data);
         try {
           const obj = JSON.parse(event.data);
           if (obj.type && obj.payload !== undefined) {
